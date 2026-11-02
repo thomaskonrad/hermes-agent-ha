@@ -1,0 +1,46 @@
+name: probe-runner-capabilities
+
+# Manual only. Reports what a GitHub-hosted runner provides for M1:
+# architecture, KVM, privileged Docker, memory/disk. No publishing.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - name: Host facts
+        run: |
+          uname -m
+          nproc
+          free -m | head -2
+          df -h / | tail -1
+          cat /proc/cpuinfo | grep -m1 -i 'model name\|Features' || true
+
+      - name: KVM device
+        run: |
+          if [ -e /dev/kvm ]; then
+            ls -l /dev/kvm
+            if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then echo "KVM_RW=yes"; else echo "KVM_RW=no"; fi
+          else
+            echo "KVM_PRESENT=no"
+          fi
+          grep -cw -E 'vmx|svm' /proc/cpuinfo || echo "no vmx/svm flag"
+
+      - name: Privileged Docker
+        run: |
+          docker version --format '{{.Server.Version}}'
+          docker run --rm --privileged alpine sh -c 'mkdir -p /mnt/t && mount -t tmpfs tmpfs /mnt/t && echo PRIVILEGED_MOUNT_OK'
+
+      - name: Docker arch and cross-arch emulation
+        run: |
+          docker info --format '{{.Architecture}}'
+          docker run --rm --platform linux/amd64 alpine uname -m || echo "NO_AMD64_EMULATION"
