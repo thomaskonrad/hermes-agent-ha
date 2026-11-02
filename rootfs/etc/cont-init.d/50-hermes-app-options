@@ -1,0 +1,67 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# Concept §8.4: seed Hermes' .env once from the two bootstrap options.
+#
+# Runs as root after upstream's 01-hermes-setup. Supervisor writes
+# options.json (mode 0600, root-owned) into the app data folder; the root
+# side never writes, chowns or chmods user-controlled paths.
+#
+# Reading is done by the tiny Python reader below with no-follow, regular-file
+# and owner checks; the parsed JSON is handed to the unprivileged seeder over
+# stdin. Any failure aborts this script (and therefore container start) with a
+# message that names the problem, never a secret.
+set -eu
+
+OPTIONS_DIR=/opt/data
+OPTIONS_FILE=options.json
+SEED=/usr/local/bin/hermes-app-seed
+PAYLOAD=/run/hermes-app-options.json
+
+# 1) Root reads options.json with no-follow, regular-file and root-owner checks.
+#    Output goes to a root-only tmpfs file, not a pipe, so a read failure
+#    aborts here (set -e) instead of seeding an empty payload.
+umask 077
+/opt/hermes/.venv/bin/python - "$OPTIONS_DIR" "$OPTIONS_FILE" "$PAYLOAD" <<'PY'
+import os
+import stat
+import sys
+
+base, name, out = sys.argv[1], sys.argv[2], sys.argv[3]
+dir_fd = os.open(base, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+try:
+    try:
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=dir_fd)
+    except FileNotFoundError:
+        data = b"{}"
+    except OSError as exc:
+        sys.stderr.write(f"[50-hermes-app-options] cannot open {name} safely (errno {exc.errno})\n")
+        sys.exit(1)
+    else:
+        with os.fdopen(fd, "rb") as handle:
+            st = os.fstat(handle.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                sys.stderr.write(f"[50-hermes-app-options] {name} is not a regular file\n")
+                sys.exit(1)
+            # Upstream's stage2 hook (01-hermes-setup) chowns the data tree to
+            # the hermes user before this script runs (observed on v0.22.5:
+            # options.json is uid 10000 by the time 50- reads it). Accept only
+            # root or the hermes user; anything else is refused.
+            if st.st_uid not in (0, 10000):
+                sys.stderr.write(f"[50-hermes-app-options] {name} has an unexpected owner (uid {st.st_uid})\n")
+                sys.exit(1)
+            data = handle.read()
+    tmp = out + ".tmp"
+    wfd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(wfd, "wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, out)
+finally:
+    os.close(dir_fd)
+PY
+
+# 2) Unprivileged seeder reads the payload as the hermes user and seeds once.
+chown hermes "$PAYLOAD"
+s6-setuidgid hermes "$SEED" < "$PAYLOAD"
+rm -f "$PAYLOAD"

@@ -1,0 +1,12 @@
+configuration:
+  openrouter_api_key:
+    name: OpenRouter API key
+    description: >-
+      Optional. Used only on the very first start to give Hermes a model
+      provider. Leave empty to pick a provider in the Hermes dashboard instead.
+  ha_token:
+    name: Home Assistant token
+    description: >-
+      Optional. A long-lived access token (Profile → Security → Long-lived
+      access tokens). Used only on the first start to connect Hermes to this
+      Home Assistant. A dedicated non-admin user is recommended.

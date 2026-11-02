@@ -1,0 +1,27 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# Concept §9.5: build the root-owned Supervisor-source allowlist for nginx.
+#
+# Supervisor exposes its address as the `supervisor` (and `hassio`) entry in
+# the container's /etc/hosts. We read ONLY that, never DNS and never request
+# data, and write `allow <ipv4>; deny all;`. Missing, ambiguous, loopback or
+# non-IPv4 entries fail closed: nginx is not started and the reason is logged.
+set -eu
+
+HOSTS_FILE="${HERMES_INGRESS_HOSTS_FILE:-/etc/hosts}"
+OUT_DIR="${HERMES_INGRESS_ACCESS_DIR:-/run/hermes-ingress}"
+OUT_FILE="$OUT_DIR/supervisor-access.conf"
+
+umask 022
+mkdir -p "$OUT_DIR"
+chown root:root "$OUT_DIR"
+chmod 0755 "$OUT_DIR"
+
+if ! /opt/hermes/.venv/bin/python /usr/local/lib/hermes-ingress/access.py render "$HOSTS_FILE" > "$OUT_FILE.tmp"; then
+    rm -f "$OUT_FILE.tmp" "$OUT_FILE"
+    echo "[40-ingress-access] FAIL-CLOSED: no valid Supervisor address in $HOSTS_FILE; ingress stays down" >&2
+    exit 1
+fi
+chmod 0644 "$OUT_FILE.tmp"
+mv -f "$OUT_FILE.tmp" "$OUT_FILE"
+echo "[40-ingress-access] Supervisor allowlist written"

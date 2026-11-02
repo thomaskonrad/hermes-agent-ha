@@ -1,0 +1,40 @@
+# Hermes Agent as a Home Assistant app (concept §8.2).
+#
+# The base is pinned by digest: upstream v0.22.5-desktop (multi-arch index,
+# verified 2026-11-02). Do not change the pin without re-running the M0 gates.
+FROM nousresearch/hermes-agent:v0.22.5-desktop@sha256:04f7a36d125bc3ebdef090cd5cf0cccaa74699e5a1a77c2965a4db437f24bf13
+
+# The only software the app adds: the ingress web tier.
+# The RUN below performs a build-time nginx syntax check with a throwaway
+# fixture allowlist, which is removed in the same layer. The real allowlist is
+# generated at container start by 40-ingress-access.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends nginx \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY rootfs/ /
+
+RUN set -eux; \
+    mkdir -p /var/log/nginx /run/hermes-ingress; \
+    chmod 0755 /etc/cont-init.d/40-ingress-access \
+      /etc/cont-init.d/50-hermes-app-options \
+      /usr/local/bin/hermes-app-seed \
+      /usr/local/lib/hermes-ingress/access.py \
+      /etc/s6-overlay/s6-rc.d/ingress-proxy/run; \
+    chmod 0644 /usr/local/lib/hermes-ingress/access.py; \
+    chmod 0755 /usr/local/lib/hermes-ingress; \
+    mkdir -p /run/hermes-ingress; \
+    printf 'allow 192.0.2.1;\ndeny all;\n' > /run/hermes-ingress/supervisor-access.conf; \
+    nginx -t -c /etc/nginx/nginx.conf; \
+    rm -f /run/hermes-ingress/supervisor-access.conf
+
+LABEL org.opencontainers.image.title="Home Assistant App: Hermes Agent" \
+      org.opencontainers.image.description="Self-hosted AI agent with dashboard, memory, skills and a shared browser" \
+      org.opencontainers.image.source="https://github.com/thomaskonrad/hermes-agent-ha" \
+      org.opencontainers.image.licenses="MIT"
+
+# Keep upstream's dispatcher (it runs s6-overlay's /init) and stay alive:
+# HA has no command of its own to give us, and an empty CMD would make
+# upstream's wrapper start the interactive TUI as the container's main program.
+ENTRYPOINT ["/opt/hermes/docker/entrypoint-dispatch.sh"]
+CMD ["sleep", "infinity"]
