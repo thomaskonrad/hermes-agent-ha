@@ -1,8 +1,8 @@
 name: Dependabot auto-merge
 
 # Dependabot pull requests only. Tests run on the PR's own code first; the merge
-# happens only if every required job passes. Branch protection on main also
-# requires these checks before any merge.
+# happens only if every required job passes. Branch protection is not available
+# on this private free repository, so the gate lives here instead.
 #
 # Major updates are never merged automatically: they need a human decision.
 on:

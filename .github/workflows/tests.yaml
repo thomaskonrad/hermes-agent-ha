@@ -1,7 +1,6 @@
 name: Tests
 
-# Runs the host, image and seeder test suites on GitHub-hosted runners.
-# Never publishes.
+# Runs the M0 test layers on GitHub-hosted runners. Never publishes.
 on:
   push:
     branches:
