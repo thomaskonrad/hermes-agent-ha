@@ -22,7 +22,8 @@ from dotenv.main import DotEnv  # noqa: E402
 from dotenv.variables import parse_variables  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SEED_PATH = ROOT / "rootfs" / "usr" / "local" / "bin" / "hermes-app-seed"
+APP = ROOT / "hermes_agent"
+SEED_PATH = APP / "rootfs" / "usr" / "local" / "bin" / "hermes-app-seed"
 _loader = importlib.machinery.SourceFileLoader("hermes_app_seed", str(SEED_PATH))
 _spec = importlib.util.spec_from_loader("hermes_app_seed", _loader)
 seed = importlib.util.module_from_spec(_spec)

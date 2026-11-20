@@ -16,9 +16,9 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 STAGE="$HOME/hermes-ha-testrun"
 
 rm -rf "$STAGE" && mkdir -p "$STAGE"
-cp -R "$REPO/tests" "$REPO/rootfs" "$STAGE/"
-cp -R "$REPO/hermes_agent" "$STAGE/" 2>/dev/null || true
-cp "$REPO/repository.yaml" "$STAGE/" 2>/dev/null || true
+cp -R "$REPO/tests" "$STAGE/"
+cp -R "$REPO/hermes_agent" "$STAGE/"
+cp "$REPO/repository.yaml" "$STAGE/"
 if [ -d "$REPO/.wheels" ]; then
     cp -R "$REPO/.wheels" "$STAGE/wheels"
 else

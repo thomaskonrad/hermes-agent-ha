@@ -76,7 +76,7 @@ def test_translations_cover_every_option():
 
 
 def test_dockerfile_base_is_pinned_by_digest():
-    text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    text = (APP / "Dockerfile").read_text(encoding="utf-8")
     from_lines = [line for line in text.splitlines() if line.startswith("FROM ")]
     assert len(from_lines) == 1
     assert re.search(r"@sha256:[0-9a-f]{64}$", from_lines[0]), from_lines[0]

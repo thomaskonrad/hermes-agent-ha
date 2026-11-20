@@ -12,7 +12,8 @@ import pathlib
 import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ACCESS_PATH = ROOT / "rootfs" / "usr" / "local" / "lib" / "hermes-ingress" / "access.py"
+APP = ROOT / "hermes_agent"
+ACCESS_PATH = APP / "rootfs" / "usr" / "local" / "lib" / "hermes-ingress" / "access.py"
 
 _spec = importlib.util.spec_from_file_location("access", ACCESS_PATH)
 access = importlib.util.module_from_spec(_spec)

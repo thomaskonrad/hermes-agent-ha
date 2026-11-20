@@ -11,8 +11,9 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-NGINX = ROOT / "rootfs" / "etc" / "nginx" / "nginx.conf"
-INGRESS = ROOT / "rootfs" / "etc" / "nginx" / "conf.d" / "ingress.conf"
+APP = ROOT / "hermes_agent"
+NGINX = APP / "rootfs" / "etc" / "nginx" / "nginx.conf"
+INGRESS = APP / "rootfs" / "etc" / "nginx" / "conf.d" / "ingress.conf"
 
 
 def test_access_include_is_server_scoped_and_precedes_all_locations():
