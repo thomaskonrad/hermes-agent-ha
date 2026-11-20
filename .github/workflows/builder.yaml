@@ -10,6 +10,14 @@ on:
   push:
     branches:
       - main
+  # Publishing is never automatic in this repository. A manual dispatch with
+  # publish=true is the only way to push images (explicit approval required).
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Push images to GHCR (requires explicit approval)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -77,5 +85,5 @@ jobs:
     uses: ./.github/workflows/build-app.yaml
     with:
       app: ${{ matrix.app }}
-      publish: ${{ github.event_name == 'push' }}
+      publish: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
     secrets: inherit
