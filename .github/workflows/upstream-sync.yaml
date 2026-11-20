@@ -1,0 +1,102 @@
+name: Upstream sync
+
+# Daily: follow the newest stable Hermes Agent release.
+# 1. detect a new stable release (scripts/upstream_bump.py check)
+# 2. apply the bump in the runner and TEST it (the same suites as Tests)
+# 3. only if every test passes, open a pull request with the bump
+# Nothing is published. Publishing stays a manual builder run (AGENTS.md).
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-24.04
+    outputs:
+      update: ${{ steps.check.outputs.update }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - id: check
+        run: |
+          set -euo pipefail
+          status=$(python3 scripts/upstream_bump.py check)
+          echo "$status"
+          if [[ "$status" == update-available:* ]]; then
+            echo "update=true" >> "$GITHUB_OUTPUT"
+            echo "version=${status##*-> }" >> "$GITHUB_OUTPUT"
+          else
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  propose:
+    needs: [detect]
+    if: needs.detect.outputs.update == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NEW_VERSION: ${{ needs.detect.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: true
+
+      # Apply the bump first, so every test below runs against the candidate.
+      - name: Apply the bump
+        run: python3 scripts/upstream_bump.py bump
+
+      - name: Host tests on the candidate
+        run: |
+          python3 -m pip install -r tests/requirements.txt
+          python3 -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py tests/test_upstream_bump.py -q -p no:cacheprovider
+
+      - name: Official app linter on the candidate
+        run: |
+          git clone --depth 1 --branch v2.21 https://github.com/frenck/action-app-linter.git /tmp/al
+          docker build -q -t local/app-linter:2.21 /tmp/al/src
+          docker run --rm -v "$PWD:/github/workspace" -w /github/workspace \
+            -e INPUT_PATH=./hermes_agent -e INPUT_COMMUNITY=false local/app-linter:2.21
+
+      - name: Image builds and in-image tests on the candidate (arm64)
+        run: |
+          docker build --platform linux/arm64 -t hermes-agent-ha:candidate-arm64 hermes_agent
+          mkdir -p "$RUNNER_TEMP/testrun"
+          cp -R tests hermes_agent repository.yaml "$RUNNER_TEMP/testrun/"
+          python3 -m pip download -q --only-binary=:all: -d "$RUNNER_TEMP/testrun/wheels" "pytest==8.4.2"
+          printf '%s\n' 'set -e' 'cd /w' \
+            'mkdir -p /tmp/pt' \
+            '/opt/hermes/.venv/bin/python -c "import zipfile,glob; [zipfile.ZipFile(w).extractall(\"/tmp/pt\") for w in glob.glob(\"/w/wheels/*.whl\")]"' \
+            'PYTHONPATH=/tmp/pt:/w /opt/hermes/.venv/bin/python -m pytest tests/test_options_seed.py -q -p no:cacheprovider' \
+            > "$RUNNER_TEMP/testrun/run.sh"
+          docker run --rm --platform linux/arm64 -v "$RUNNER_TEMP/testrun:/w" \
+            --entrypoint sh hermes-agent-ha:candidate-arm64 /w/run.sh
+
+      - name: Push a branch and open a pull request
+        run: |
+          set -euo pipefail
+          branch="upstream/hermes-${NEW_VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add hermes_agent/Dockerfile hermes_agent/config.yaml
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "Hermes Agent ${NEW_VERSION} (upstream sync)"
+          git push --force-with-lease origin "$branch"
+          if [ "$(gh pr list --head "$branch" --state open --json number --jq 'length')" = "0" ]; then
+            gh pr create --head "$branch" --base main \
+              --title "Hermes Agent ${NEW_VERSION} (upstream sync)" \
+              --body "Automated: upstream stable release ${NEW_VERSION}. Tests passed in this run. Publishing images is NOT part of this pull request."
+          fi
