@@ -116,26 +116,31 @@ jobs:
           # it is the intended behaviour.
           # The checkout does not persist credentials, so authenticate explicitly.
           remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          # Ask the remote whether the branch exists, and stop on any other failure.
-          # A failed or unauthenticated fetch must not look like "no branch".
-          if git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1; then
-            git fetch -q "$remote" "+refs/heads/${branch}:refs/remotes/origin/${branch}"
+          # Read the remote's current SHA for the branch, and stop on any failure
+          # other than "branch does not exist". An unauthenticated query must not
+          # look like "no branch".
+          expected=""
+          if out=$(git ls-remote --exit-code --heads "$remote" "$branch" 2>/dev/null); then
+            expected=$(printf '%s' "$out" | awk '{print $1}')
           else
             status=$?
-            if [ "$status" -eq 2 ]; then
-              echo "::notice::branch ${branch} does not exist yet; creating it"
-            else
+            if [ "$status" -ne 2 ]; then
               echo "::error::could not query the remote (exit ${status}); stopping" >&2
               exit 1
             fi
+            echo "::notice::branch ${branch} does not exist yet; creating it"
           fi
           git checkout -B "$branch"
           git add hermes_agent/Dockerfile hermes_agent/config.yaml
           git diff --cached --quiet && { echo "no change"; exit 0; }
           git commit -m "Hermes Agent ${NEW_VERSION} (upstream sync)"
-          # Push with the App token, not the job's read-only GITHUB_TOKEN.
-          git push --force-with-lease \
-            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
+          # Push with the App token. The lease names the exact remote SHA we read
+          # above, so the push only overwrites the candidate we know about.
+          if [ -n "$expected" ]; then
+            git push "--force-with-lease=refs/heads/${branch}:${expected}" "$remote" "HEAD:refs/heads/${branch}"
+          else
+            git push "$remote" "HEAD:refs/heads/${branch}"
+          fi
           if [ "$(gh pr list --head "$branch" --state open --json number --jq 'length')" = "0" ]; then
             gh pr create --head "$branch" --base main \
               --title "Hermes Agent ${NEW_VERSION} (upstream sync)" \
