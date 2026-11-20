@@ -1,7 +1,7 @@
-# Hermes Agent as a Home Assistant app.
+# Hermes Agent as a Home Assistant app (concept §8.2).
 #
-# The base is pinned by digest: upstream v0.23.3-desktop (multi-arch index,
-# Do not change the pin without re-running the test suites and the app linter.
+# The base is pinned by digest: upstream v0.22.5-desktop (multi-arch index,
+# verified 2026-11-02). Do not change the pin without re-running the M0 gates.
 FROM nousresearch/hermes-agent:v0.23.3-desktop@sha256:5f587d1c036e551f57f1c706c460b41a4f48de0c4763e5865343eafd3950a2bc
 
 # The only software the app adds: the ingress web tier.
@@ -33,7 +33,7 @@ LABEL org.opencontainers.image.title="Home Assistant App: Hermes Agent" \
       org.opencontainers.image.source="https://github.com/thomaskonrad/hermes-agent-ha" \
       org.opencontainers.image.licenses="MIT"
 
-# Liveness of the web tier. Replaces the obsolete `watchdog`
+# Liveness of the web tier (concept §9.4). Replaces the obsolete `watchdog`
 # config key. It checks the dashboard the proxy fronts, directly on loopback:
 # going through :8099 would always be refused by the Supervisor-source
 # allowlist (loopback is not allowed), so it could never report healthy.
