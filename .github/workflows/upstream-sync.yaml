@@ -110,6 +110,25 @@ jobs:
           branch="upstream/hermes-${NEW_VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # --force-with-lease needs the remote branch's current state. Fetch it
+          # first, or the push is refused as "stale info" when a branch from an
+          # earlier run already exists. The branch is a candidate, so replacing
+          # it is the intended behaviour.
+          # The checkout does not persist credentials, so authenticate explicitly.
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # Ask the remote whether the branch exists, and stop on any other failure.
+          # A failed or unauthenticated fetch must not look like "no branch".
+          if git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1; then
+            git fetch -q "$remote" "+refs/heads/${branch}:refs/remotes/origin/${branch}"
+          else
+            status=$?
+            if [ "$status" -eq 2 ]; then
+              echo "::notice::branch ${branch} does not exist yet; creating it"
+            else
+              echo "::error::could not query the remote (exit ${status}); stopping" >&2
+              exit 1
+            fi
+          fi
           git checkout -B "$branch"
           git add hermes_agent/Dockerfile hermes_agent/config.yaml
           git diff --cached --quiet && { echo "no change"; exit 0; }
