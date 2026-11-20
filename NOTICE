@@ -1,0 +1,17 @@
+Hermes Agent for Home Assistant
+
+This repository packages Hermes Agent for Home Assistant. It does not contain
+Hermes Agent source code; the app image is built on the upstream Hermes Agent
+container image.
+
+Hermes Agent
+  Copyright (c) 2025 Nous Research
+  Licensed under the MIT License
+  https://github.com/NousResearch/hermes-agent
+
+The "Hermes" name belongs to its upstream project. This repository is an
+unofficial packaging of Hermes Agent and is not affiliated with or endorsed by
+Nous Research.
+
+Code in this repository (the app wrapper, scripts and documentation) is licensed
+under the MIT License. See LICENSE.

@@ -41,6 +41,20 @@ Full setup, options and troubleshooting are in
 - Hermes Agent itself (features, providers, messaging): see the
   [Hermes documentation](https://hermes-agent.nousresearch.com/docs).
 
+## About this project
+
+This is an unofficial packaging of Hermes Agent for Home Assistant. It is not
+made by or affiliated with Nous Research.
+
+It was built with the help of an AI coding agent (Cline), and
+reviewed and maintained by a human. Changes are tested before they are merged,
+but treat the app as experimental.
+
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+
 ## License
 
-MIT for this app wrapper. Hermes Agent is MIT, copyright Nous Research.
+MIT for this app wrapper, see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Hermes Agent is MIT, copyright Nous Research.
