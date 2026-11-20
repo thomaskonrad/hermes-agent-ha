@@ -87,8 +87,18 @@ jobs:
             --entrypoint sh hermes-agent-ha:candidate-arm64 /w/run.sh
 
       - name: Push a branch and open a pull request
+        env:
+          # A fine-grained token: GITHUB_TOKEN cannot create pull requests on this
+          # repository (Actions PR creation is not available here). The token
+          # needs contents:write and pull-requests:write on this repository only.
+          PR_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
         run: |
           set -euo pipefail
+          if [ -z "${PR_TOKEN}" ]; then
+            echo "::error::UPSTREAM_SYNC_TOKEN secret is not set; cannot open the pull request" >&2
+            exit 1
+          fi
+          export GH_TOKEN="${PR_TOKEN}"
           branch="upstream/hermes-${NEW_VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
