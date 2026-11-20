@@ -33,6 +33,13 @@ LABEL org.opencontainers.image.title="Home Assistant App: Hermes Agent" \
       org.opencontainers.image.source="https://github.com/thomaskonrad/hermes-agent-ha" \
       org.opencontainers.image.licenses="MIT"
 
+# Liveness of the web tier (concept §9.4). Replaces the obsolete `watchdog`
+# config key. It checks the dashboard the proxy fronts, directly on loopback:
+# going through :8099 would always be refused by the Supervisor-source
+# allowlist (loopback is not allowed), so it could never report healthy.
+HEALTHCHECK --interval=120s --timeout=15s --start-period=120s --retries=2 \
+    CMD curl -fsS -o /dev/null http://127.0.0.1:9119/api/status || exit 1
+
 # Keep upstream's dispatcher (it runs s6-overlay's /init) and stay alive:
 # HA has no command of its own to give us, and an empty CMD would make
 # upstream's wrapper start the interactive TUI as the container's main program.

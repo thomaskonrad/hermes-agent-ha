@@ -25,14 +25,23 @@ def test_stage_is_experimental_for_m0():
     assert _config()["stage"] == "experimental"
 
 
-def test_hardening_is_the_safest_value():
+# The official linter flags keys that equal their default, so the hardening
+# defaults are not written out. These tests assert the *absence* of each
+# privilege key (the Supervisor default is the safe value) and that no key
+# requests a privilege.
+_PRIVILEGE_KEYS = (
+    "host_network", "host_pid", "host_ipc", "host_dbus", "hassio_api",
+    "homeassistant_api", "docker_api", "full_access", "apparmor_disabled",
+)
+
+
+def test_no_privilege_is_requested():
     cfg = _config()
-    for key in ("host_network", "host_pid", "host_ipc", "host_dbus", "hassio_api",
-                "homeassistant_api", "docker_api", "full_access"):
-        assert cfg[key] is False, key
-    assert cfg["privileged"] == []
-    assert cfg["devices"] == []
-    assert cfg["apparmor"] is True
+    for key in _PRIVILEGE_KEYS:
+        assert key not in cfg or cfg[key] in (False, None), key
+    assert cfg.get("privileged", []) == []
+    assert cfg.get("devices", []) == []
+    assert cfg.get("apparmor", True) is True
 
 
 def test_no_published_ports_or_webui():
@@ -40,7 +49,6 @@ def test_no_published_ports_or_webui():
     assert "ports" not in cfg
     assert "webui" not in cfg
     assert cfg["ingress"] is True
-    assert cfg["ingress_port"] == 8099
 
 
 def test_data_is_mounted_at_upstream_path_only():
@@ -62,8 +70,13 @@ def test_arch_is_64_bit_only():
     assert set(_config()["arch"]) == {"aarch64", "amd64"}
 
 
-def test_watchdog_targets_health_on_ingress_port():
-    assert _config()["watchdog"] == "http://[HOST]:[PORT:8099]/ha-health"
+def test_watchdog_key_is_removed_and_healthcheck_owns_liveness():
+    # The linter reports `watchdog` as obsolete; liveness moved to a Dockerfile
+    # HEALTHCHECK that probes the dashboard on loopback (see Dockerfile).
+    assert "watchdog" not in _config()
+    dockerfile = (APP / "Dockerfile").read_text(encoding="utf-8")
+    assert "HEALTHCHECK" in dockerfile
+    assert "http://127.0.0.1:9119/api/status" in dockerfile
 
 
 def test_translations_cover_every_option():

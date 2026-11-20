@@ -53,10 +53,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build image (build fails if nginx -t fails)
-        run: |
-          docker build --platform "${{ matrix.platform }}" \
-            -t "hermes-agent-ha:ci-${{ matrix.arch }}" hermes_agent
+        uses: docker/build-push-action@v6
+        with:
+          context: hermes_agent
+          file: hermes_agent/Dockerfile
+          platforms: ${{ matrix.platform }}
+          load: true
+          push: false
+          tags: hermes-agent-ha:ci-${{ matrix.arch }}
 
       - name: Verify architecture
         run: |
