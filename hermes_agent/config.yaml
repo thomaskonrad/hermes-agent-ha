@@ -2,7 +2,7 @@
 # Concept: concepts/public-hermes-agent-ha-app.md (§10.1). Stage stays
 # experimental until every §16 release gate is closed.
 name: Hermes Agent
-version: "0.23.2"
+version: "0.23.3"
 slug: hermes_agent
 description: Self-hosted AI agent with a dashboard, long-term memory, skills and a built-in browser
 url: https://github.com/thomaskonrad/hermes-agent-ha/tree/main/hermes_agent
