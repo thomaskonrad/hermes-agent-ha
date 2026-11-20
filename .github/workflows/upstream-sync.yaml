@@ -42,7 +42,9 @@ jobs:
   propose:
     needs: [detect]
     if: needs.detect.outputs.update == 'true'
-    runs-on: ubuntu-24.04
+    # Native arm64 runner: the in-image tests build and run the aarch64 image
+    # without emulation (an amd64 runner fails with "exec format error").
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: write
       pull-requests: write
