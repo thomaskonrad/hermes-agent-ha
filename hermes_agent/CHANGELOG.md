@@ -1,6 +1,8 @@
 <!-- https://contributors.home-assistant.io/apps/guides/presentation/#changelog -->
 ## 0.22.5
 
-- Milestone M0 (experimental): app skeleton, Supervisor-source access control
-  for the dashboard, first-start-only seeding of two options.
-- Image is pinned to the upstream `v0.22.5-desktop` index digest.
+- First experimental release. Runs Hermes Agent 0.22.5 with its dashboard in
+  the Home Assistant sidebar.
+- The dashboard is reachable only through Home Assistant's Supervisor.
+- Two optional first-start settings: an OpenRouter API key and a Home
+  Assistant token.

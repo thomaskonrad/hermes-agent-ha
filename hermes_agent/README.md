@@ -8,5 +8,7 @@ _Self-hosted AI agent with a dashboard, in your Home Assistant sidebar._
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
 
-**Experimental.** Not yet tested on a real Home Assistant installation. See
-[DOCS.md](DOCS.md).
+Run Hermes Agent, a self-hosted AI agent, on your Home Assistant, with its
+dashboard in your sidebar.
+
+**Experimental.** Read [DOCS.md](DOCS.md) before you install.

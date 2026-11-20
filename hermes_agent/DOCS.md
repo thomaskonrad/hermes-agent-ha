@@ -1,62 +1,113 @@
-# Home Assistant App: Hermes Agent
+# Hermes Agent
 
 > **Experimental.** This version has not been tested on a real Home Assistant
-> installation yet. Expect rough edges and possible changes.
+> installation yet. Expect rough edges, and back up your Home Assistant before
+> you install.
 
-Hermes Agent is a self-hosted AI agent. This app runs it on your Home Assistant
-and adds a **Hermes Agent** entry to your sidebar, where you use the Hermes
-dashboard.
+Hermes Agent is a self-hosted AI agent. It chats with you, remembers things,
+learns skills, runs scheduled jobs and can use a browser. This app runs it on
+your Home Assistant and adds **Hermes Agent** to your sidebar, where you use
+the Hermes dashboard.
+
+## Before you install
+
+You need:
+
+- Home Assistant OS or Supervised, on a 64-bit system (aarch64 or amd64).
+- About 1.5 GB of free memory and about 4 GB of free disk space for the app.
+  These are estimates. More memory helps if you use the browser.
+- A model provider. OpenRouter is the easiest choice: create a key at
+  [openrouter.ai](https://openrouter.ai). You can also add a provider later,
+  inside the Hermes dashboard.
 
 ## Install
 
-1. Settings → Apps → Install app → ⋮ → Repositories, then add the repository URL.
-2. Install **Hermes Agent**.
-3. Optional: on the Configuration tab, enter an OpenRouter API key and/or a
-   Home Assistant token **before the first start** (see below).
-4. Start the app and open **Hermes Agent** in the sidebar.
-
-## Requirements
-
-- Home Assistant OS or Supervised, 64-bit (aarch64 or amd64).
-- At least about 1.5 GB free memory and about 4 GB free disk for the app image,
-  plus space for your data. These are estimates.
-- A model provider, such as OpenRouter.
+1. Go to **Settings → Apps → Install app**.
+2. Open the ⋮ menu (top right) and choose **Repositories**.
+3. Add `https://github.com/thomaskonrad/hermes-agent-ha` and close the dialog.
+4. Open **Hermes Agent** in the store and select **Install**.
+5. Before you start it, set the options (see below). This is optional.
+6. Select **Start**. The first start takes a minute or two, especially on a
+   Raspberry Pi. The panel is ready when it loads.
+7. Open **Hermes Agent** from the sidebar.
 
 ## Options
 
-Both options are used **only on the first start**.
+There are two options. Both are read **only on the first start**.
 
-| Option | What it does |
+| Option | What to enter |
 |---|---|
-| `openrouter_api_key` | Optional. Written to Hermes' settings if no key is set yet. |
-| `ha_token` | Optional. A long-lived Home Assistant access token. Written to Hermes' settings if no token is set yet. Use a dedicated non-admin user. |
+| **OpenRouter API key** | Your OpenRouter key. Leave it empty to choose a provider in the dashboard instead. |
+| **Home Assistant token** | A long-lived access token from Home Assistant. Lets Hermes control your devices. Use a dedicated user that is not an administrator. |
 
-After the first start, changing these fields does **not** change Hermes. Manage
-credentials inside Hermes. Clearing the fields does not remove credentials that
-were already written.
+To create a Home Assistant token, go to your user profile → **Security** →
+**Long-lived access tokens**, then create one.
+
+**Important:** after the first start, changing these fields does **not** change
+Hermes. Manage your keys and tokens inside Hermes instead. Clearing the fields
+does not remove keys that Hermes already saved.
+
+## Using Hermes
+
+Everything else is configured inside Hermes itself, in the dashboard:
+
+- **Model and provider:** Settings, then Model. You can also use the Chat tab.
+- **Messaging (Telegram, Discord, and others):** Messaging. Restart the gateway
+  from the Chat tab after you change it.
+- **Scheduled jobs:** the cron section of the dashboard.
+- **Browser:** the Screen pane lets you take over the browser to log in to
+  websites yourself. The agent then uses the same session.
+
+For full documentation of Hermes, see the
+[Hermes documentation](https://hermes-agent.nousresearch.com/docs).
+
+## Backups and updates
+
+- The app is designed to be backed up as a whole, including your Hermes
+  settings, memories, skills, scheduled jobs and browser logins. **Backups contain secrets** such as
+  API keys and tokens, so store them somewhere safe.
+- Restoring a backup is intended to bring back the app's data as it was.
+- Backup and restore have **not yet been tested** on a real installation.
+- Updates are published as new versions of this app. Read the changelog first.
 
 ## Security
 
-- The app publishes no ports. The panel is reachable only through Home
-  Assistant's sidebar.
-- Access is limited to Home Assistant's Supervisor. Other apps on the network
-  cannot open the dashboard.
-- The app has no access to the Home Assistant API as an administrator, to the
-  Supervisor, or to Docker.
-- Credentials are stored in the app's data folder and are included in backups.
-  Treat backups as sensitive.
-- Hermes can run commands inside the app container. It is not a sandbox for
-  your Home Assistant host.
+- The app opens no ports on your network. The panel is reachable only through
+  the Home Assistant sidebar.
+- Only Home Assistant's own Supervisor can reach the dashboard. Other apps and
+  devices on your network are refused.
+- The app has no administrator access to Home Assistant, to the Supervisor, or
+  to Docker.
+- Hermes can run commands inside the app's container, and it can use any
+  credentials you give it. The container is not a sandbox for your whole system,
+  so only give it the access you are comfortable with.
+- Use a non-administrator Home Assistant user for the token.
+
+## Troubleshooting
+
+**The sidebar panel shows an error or is blank right after start.**
+Wait a minute. On first start Hermes sets itself up. If it still fails, open the
+app's **Log** tab. It names the problem, for example that the Supervisor
+address could not be determined. Include that message when you report the issue.
+
+**The app will not start.**
+Check the **Log** tab for the first error. Restart the app once after fixing
+the problem.
+
+**I changed an option and nothing happened.**
+That is expected after the first start. Change the setting inside Hermes.
 
 ## Known limitations
 
-- Experimental: not yet verified on Home Assistant hardware.
-- Backups and restores are not yet verified.
+- Experimental: not yet verified on real Home Assistant installations.
+- Backup and restore are not yet verified.
+- Messaging connectors that need inbound web access (webhooks) do not work
+  with this app, because the app opens no ports.
 
-## Help and bugs
+## Support and bugs
 
-Report problems in the repository's issue tracker. Upstream Hermes behaviour
-belongs to the Hermes project.
+Report problems on this repository's issue tracker. Questions about Hermes
+itself belong to the Hermes project.
 
 ## License
 
