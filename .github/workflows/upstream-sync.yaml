@@ -24,7 +24,7 @@ jobs:
       update: ${{ steps.check.outputs.update }}
       version: ${{ steps.check.outputs.version }}
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - id: check
@@ -53,7 +53,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       NEW_VERSION: ${{ needs.detect.outputs.version }}
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Do not store the default GITHUB_TOKEN in git's config. It would take
           # precedence over the App token and fail with a 403 on push.
@@ -93,7 +93,7 @@ jobs:
       # pull request needs. It is revoked when the job ends.
       - name: Create GitHub App token (this repository only)
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ vars.UPSTREAM_SYNC_APP_ID }}
           private-key: ${{ secrets.UPSTREAM_SYNC_APP_PRIVATE_KEY }}
