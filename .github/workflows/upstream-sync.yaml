@@ -55,7 +55,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          persist-credentials: true
+          # Do not store the default GITHUB_TOKEN in git's config. It would take
+          # precedence over the App token and fail with a 403 on push.
+          persist-credentials: false
 
       # Apply the bump first, so every test below runs against the candidate.
       - name: Apply the bump
