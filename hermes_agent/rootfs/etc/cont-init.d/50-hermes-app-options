@@ -1,6 +1,6 @@
 #!/command/with-contenv sh
 # shellcheck shell=sh
-# Concept §8.4: seed Hermes' .env once from the two bootstrap options.
+# Seed Hermes' .env once from the two bootstrap options.
 #
 # Runs as root after upstream's 01-hermes-setup. Supervisor writes
 # options.json (mode 0600, root-owned) into the app data folder; the root

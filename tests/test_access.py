@@ -1,4 +1,4 @@
-"""Unit tests for the Supervisor-source allowlist renderer (concept §9.5).
+"""Unit tests for the Supervisor-source allowlist renderer.
 
 Pure logic, no Docker. The renderer must fail closed: anything other than a
 single, routable IPv4 `supervisor` entry is refused.

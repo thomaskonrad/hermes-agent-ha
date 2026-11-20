@@ -1,6 +1,6 @@
 """Render the nginx Supervisor-source allowlist from the container's /etc/hosts.
 
-Concept §9.5. Only the `supervisor` hosts entry is trusted. Exactly one
+Only the `supervisor` hosts entry is trusted. Exactly one
 distinct, non-loopback, non-multicast, non-unspecified IPv4 address must be
 present; anything else is refused so nginx never falls back to `allow all`.
 

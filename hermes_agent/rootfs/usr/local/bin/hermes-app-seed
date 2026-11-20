@@ -5,7 +5,7 @@ Runs as the unprivileged Hermes user (uid 10000) via s6-setuidgid. The root
 side (50-hermes-app-options) reads options.json with no-follow semantics and
 passes the JSON on stdin; this helper never reads options.json itself.
 
-Contract (concept §8.4):
+Contract:
   * Only absent or empty assignments are filled; nonempty existing values win.
   * Lines that already exist are never rewritten. New lines are appended.
   * Values are written single-quoted and round-trip through Hermes' own reader

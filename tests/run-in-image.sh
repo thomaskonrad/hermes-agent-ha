@@ -2,7 +2,7 @@
 # Run the in-image test suite (seeder, real python-dotenv) against an image.
 #
 # Usage: tests/run-in-image.sh <image-tag> [platform]
-#   image-tag  e.g. hermes-agent-ha:m0-arm64 (must be built from this repo)
+#   image-tag  e.g. hermes-agent-ha:dev-arm64 (must be built from this repo)
 #   platform   e.g. linux/arm64 (default: the host platform)
 #
 # Colima only shares $HOME into the VM, so the repo is staged under $HOME.

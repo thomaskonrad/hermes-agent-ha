@@ -1,4 +1,4 @@
-"""Static invariants for the ingress proxy config (concept §9.3, §9.5).
+"""Static invariants for the ingress proxy config.
 
 Behavioural checks (real nginx, real allowlist, live peers) run in the image
 via tests/run-in-image.sh and tests/live_checks.sh. These tests pin the parts

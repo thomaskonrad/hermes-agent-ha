@@ -1,6 +1,6 @@
 #!/command/with-contenv sh
 # shellcheck shell=sh
-# Concept §9.2: the only app-owned service. nginx is the ingress front door on
+# The only app-owned service. nginx is the ingress front door on
 # :8099. Refuses to start unless the access allowlist exists and was generated
 # by 40-ingress-access (no `allow all` fallback).
 set -eu

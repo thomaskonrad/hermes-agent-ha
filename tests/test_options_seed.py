@@ -1,4 +1,4 @@
-"""Option seeding tests (concept §8.4 and §13.4 Options).
+"""Option seeding tests.
 
 These import the real seeder and run it with the image's own python-dotenv,
 so the round-trip assertions use the same parser Hermes uses at runtime.

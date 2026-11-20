@@ -1,4 +1,4 @@
-"""Metadata invariants for the Home Assistant app (concept §10, §13.4 Metadata).
+"""Metadata invariants for the Home Assistant app.
 
 Checks the app manifest against the Supervisor schema rules verified in
 supervisor/apps/validate.py (2026-11-02): data mapping, hardening defaults,
@@ -21,7 +21,7 @@ def _config() -> dict:
 
 
 def test_stage_is_experimental_for_m0():
-    # Concept §10.1: stays experimental until every §16 release gate is closed.
+    # Stays experimental until the app is verified on real Home Assistant installations.
     assert _config()["stage"] == "experimental"
 
 

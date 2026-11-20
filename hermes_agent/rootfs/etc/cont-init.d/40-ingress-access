@@ -1,6 +1,6 @@
 #!/command/with-contenv sh
 # shellcheck shell=sh
-# Concept §9.5: build the root-owned Supervisor-source allowlist for nginx.
+# Build the root-owned Supervisor-source allowlist for nginx.
 #
 # Supervisor exposes its address as the `supervisor` (and `hassio`) entry in
 # the container's /etc/hosts. We read ONLY that, never DNS and never request
