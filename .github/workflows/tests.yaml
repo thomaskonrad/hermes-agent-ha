@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -55,10 +55,10 @@ jobs:
           persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build image (build fails if nginx -t fails)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: hermes_agent
           file: hermes_agent/Dockerfile
