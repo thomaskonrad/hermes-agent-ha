@@ -1,5 +1,6 @@
-# Hermes Agent for Home Assistant. Stage stays experimental until the app has
-# been verified on real Home Assistant installations.
+# Hermes Agent — Home Assistant app (experimental, milestone M0).
+# Concept: concepts/public-hermes-agent-ha-app.md (§10.1). Stage stays
+# experimental until every §16 release gate is closed.
 name: Hermes Agent
 version: "0.23.3"
 slug: hermes_agent
@@ -18,7 +19,7 @@ panel_icon: mdi:robot-happy-outline
 
 map:
   - type: data
-    path: /opt/data              # upstream's own data path
+    path: /opt/data              # upstream's own data path (concept §5)
     read_only: false
 
 backup: cold
