@@ -8,7 +8,7 @@ open a pull request.
 
 ```sh
 python3 -m venv .venv
-.venv/bin/pip install -r tests/requirements.txt
+.venv/bin/pip install -r requirements-dev.txt
 ```
 
 You need Docker to build the image and to run the in-image tests.

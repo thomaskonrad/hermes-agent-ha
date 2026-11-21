@@ -1,8 +1,8 @@
 version: 2
 
-# Keeps the pinned GitHub Actions and the Docker base image fresh.
-# Cooldown is intentionally not set yet: the official syntax could not be
-# verified from the docs at the time of writing. Add it once it is confirmed.
+# Keeps the pinned GitHub Actions, the Docker base image and the test
+# requirements fresh. Version updates wait a few days after release (cooldown);
+# security updates are not subject to cooldown.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -11,6 +11,8 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Vienna"
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: "ci"
     groups:
@@ -25,6 +27,8 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Vienna"
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: "docker"
 
@@ -35,6 +39,8 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Vienna"
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: "test"
     groups:
