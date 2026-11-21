@@ -1,0 +1,166 @@
+name: Upstream sync
+
+# Daily: follow the newest stable Hermes Agent release.
+# 1. detect a new stable release (scripts/upstream_bump.py check)
+# 2. apply the bump in the runner and TEST it (the same suites as Tests)
+# 3. only if every test passes, open a pull request with the bump
+# Nothing is published. Publishing stays a manual builder run (AGENTS.md).
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-24.04
+    # Read-only. pull-requests: read lets the duplicate check query pull requests.
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      update: ${{ steps.check.outputs.update }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          status=$(python3 scripts/upstream_bump.py check)
+          echo "$status"
+          if [[ "$status" != update-available:* ]]; then
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          version="${status##*-> }"
+          # One proposal per version. The branch is the record of a proposal. A closed
+          # (rejected) pull request keeps its branch, so that version is not proposed
+          # again. A branch with no pull request at all means an earlier run pushed but
+          # could not open the pull request: fail, so the failure alert fires.
+          branch="upstream/hermes-${version}"
+          if out=$(gh api "repos/${GITHUB_REPOSITORY}/branches/${branch}" 2>&1 >/dev/null); then
+            prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --state all --json number --jq 'length')
+            if [ "$prs" = "0" ]; then
+              echo "::error::branch ${branch} exists but has no pull request. Open the pull request or delete the branch, then re-run." >&2
+              exit 1
+            fi
+            echo "::notice::Hermes ${version} was already proposed; nothing to do"
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          elif ! printf '%s' "$out" | grep -q 'HTTP 404'; then
+            # Anything other than "branch not found" is an error, never "no branch".
+            echo "::error::could not query branch ${branch}: ${out}" >&2
+            exit 1
+          fi
+          echo "update=true" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  propose:
+    needs: [detect]
+    if: needs.detect.outputs.update == 'true'
+    # Native arm64 runner: the in-image tests build and run the aarch64 image
+    # without emulation (an amd64 runner fails with "exec format error").
+    runs-on: ubuntu-24.04-arm
+    # The job's own GITHUB_TOKEN is read-only. Writing happens only through the
+    # GitHub App token minted in the final step, scoped to this repository.
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NEW_VERSION: ${{ needs.detect.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Do not store the default GITHUB_TOKEN in git's config. It would take
+          # precedence over the App token and fail with a 403 on push.
+          persist-credentials: false
+
+      # Apply the bump first, so every test below runs against the candidate.
+      - name: Apply the bump
+        run: python3 scripts/upstream_bump.py bump
+
+      - name: Host tests on the candidate
+        run: |
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py tests/test_upstream_bump.py -q -p no:cacheprovider
+
+      - name: Official app linter on the candidate
+        run: |
+          git clone --depth 1 --branch v2.21 https://github.com/frenck/action-app-linter.git /tmp/al
+          docker build -q -t local/app-linter:2.21 /tmp/al/src
+          docker run --rm -v "$PWD:/github/workspace" -w /github/workspace \
+            -e INPUT_PATH=./hermes_agent -e INPUT_COMMUNITY=false local/app-linter:2.21
+
+      - name: Image builds and in-image tests on the candidate (arm64)
+        run: |
+          docker build --platform linux/arm64 -t hermes-agent-ha:candidate-arm64 hermes_agent
+          sh tests/run-in-image.sh hermes-agent-ha:candidate-arm64 linux/arm64
+
+      # Mint a token for this repository only, with only the two permissions the
+      # pull request needs. It is revoked when the job ends.
+      - name: Create GitHub App token (this repository only)
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ vars.UPSTREAM_SYNC_APP_ID }}
+          private-key: ${{ secrets.UPSTREAM_SYNC_APP_PRIVATE_KEY }}
+          owner: thomaskonrad
+          repositories: hermes-agent-ha
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Push a branch and open a pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          branch="upstream/hermes-${NEW_VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add hermes_agent/Dockerfile hermes_agent/config.yaml
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "Hermes Agent ${NEW_VERSION} (upstream sync)"
+          # A plain push, never a force push. The checkout does not persist
+          # credentials, so the App token goes into the URL. If the branch already
+          # exists, git refuses the push and this job fails; no candidate is overwritten.
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${branch}"
+          gh pr create --repo "$GITHUB_REPOSITORY" --head "$branch" --base main \
+            --title "Hermes Agent ${NEW_VERSION} (upstream sync)" \
+            --body "Automated: upstream stable release ${NEW_VERSION}. Tests passed in this run. Publishing images is NOT part of this pull request."
+
+  # Failure alert. Any failed job above opens one issue (or comments on the open
+  # one), so a failed sync is never silent. Closing the issue re-arms the alert.
+  notify:
+    name: Report a failed sync
+    needs: [detect, propose]
+    if: failure()
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Open the failure issue, or comment on the open one
+        run: |
+          set -euo pipefail
+          title="Upstream sync failed"
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"${title}\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "Failed again: ${run_url}"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
+              --body "The daily upstream sync failed. Details: ${run_url}. Fix the cause, then close this issue."
+          fi

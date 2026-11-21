@@ -1,0 +1,63 @@
+name: Bug report
+description: Something in this app is broken or behaves unexpectedly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please do **not** include real API keys,
+        tokens or other secrets anywhere in this issue.
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: "The version on the app page, or `version` in hermes_agent/config.yaml."
+      placeholder: "0.22.5"
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.11.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: arch
+    attributes:
+      label: Architecture
+      options:
+        - aarch64
+        - amd64
+    validations:
+      required: true
+  - type: dropdown
+    id: install-type
+    attributes:
+      label: How do you run Home Assistant?
+      options:
+        - Home Assistant OS on Yellow, Green or Raspberry Pi
+        - Home Assistant OS in a virtual machine
+        - Home Assistant Supervised
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant app log lines
+      description: From the app's Log tab. Remove any secrets before you paste.
+      render: text

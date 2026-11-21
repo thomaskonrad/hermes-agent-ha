@@ -1,0 +1,186 @@
+#!/opt/hermes/.venv/bin/python
+"""Seed Hermes' .env from the app's two bootstrap options, once.
+
+Runs as the unprivileged Hermes user (uid 10000) via s6-setuidgid. The root
+side (50-hermes-app-options) reads options.json with no-follow semantics and
+passes the JSON on stdin; this helper never reads options.json itself.
+
+Contract:
+  * Only absent or empty assignments are filled; nonempty existing values win.
+  * Lines that already exist are never rewritten. New lines are appended.
+  * Values are written single-quoted and round-trip through Hermes' own reader
+    (dotenv parser + ${VAR} resolution). A value that would be interpolated
+    (contains "${") is rejected, never silently changed.
+  * .env is replaced atomically with mode 0600; symlinked or non-regular
+    targets are refused.
+  * The completion marker is created only after .env is durably written.
+    A marker from a restored backup prevents reseeding.
+  * No secret is ever printed, logged or passed as an argument.
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import os
+import re
+import stat
+import sys
+from pathlib import Path
+
+from dotenv.main import DotEnv
+from dotenv.variables import parse_variables
+
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", "/opt/data"))
+ENV_NAME = ".env"
+MARKER_NAME = ".hermes-app-bootstrap-done"
+
+# option key -> .env names it seeds
+OPTION_TARGETS = {
+    "openrouter_api_key": ("OPENROUTER_API_KEY",),
+    "ha_token": ("HASS_TOKEN",),
+}
+HASS_URL_DEFAULT = "http://homeassistant:8123"
+_KEY_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+
+
+class SeedError(Exception):
+    """A retryable failure. The message names the field, never the secret."""
+
+
+def _hermes_read(text: str) -> dict[str, str]:
+    """Parse a .env exactly as Hermes does: same parser, same ${VAR} resolution."""
+    out: dict[str, str] = {}
+    for name, value in DotEnv(dotenv_path=None, stream=io.StringIO(text), interpolate=False).parse():
+        if name is None or value is None:
+            continue
+        out[name] = "".join(atom.resolve({}) for atom in parse_variables(value))
+    return out
+
+
+def _sq(value: str) -> str:
+    """Single-quote a value. Round-trips exactly through _hermes_read."""
+    return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+
+def _check_value(field: str, value: str) -> None:
+    if "${" in value:
+        raise SeedError(f"{field}: value contains a variable reference that Hermes would expand; refusing")
+    if any(ch in value for ch in ("\n", "\r", "\x00")):
+        raise SeedError(f"{field}: value contains a line break or NUL; refusing")
+
+
+def _read_env_text(path: Path) -> str:
+    """Read .env without following symlinks. An absent file reads as empty."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    except FileNotFoundError:
+        return ""
+    except OSError as exc:
+        raise SeedError(f"cannot open {path.name} safely (errno {exc.errno})") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise SeedError(f"{path.name} is not a regular file")
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1  # ownership passed to handle; closed by the with block
+            return handle.read().decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise SeedError(f"{path.name} is not valid UTF-8") from exc
+    except OSError as exc:
+        raise SeedError(f"cannot read {path.name} (errno {exc.errno})") from exc
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def _fsync_dir(directory: Path) -> None:
+    dir_fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+
+
+def _atomic_write(path: Path, data: str) -> None:
+    """Replace path atomically with mode 0600. Refuses symlinks at the target."""
+    if path.is_symlink():
+        raise SeedError(f"{path.name} is a symlink; refusing to replace it")
+    tmp = path.with_name(f".{path.name}.tmp-{os.getpid()}")
+    try:
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    except OSError as exc:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise SeedError(f"cannot write {path.name} atomically (errno {exc.errno})") from exc
+    _fsync_dir(path.parent)
+
+
+def plan_additions(env_text: str, options: dict) -> list[tuple[str, str]]:
+    """(name, value) pairs to append for nonempty options. Pure: no I/O."""
+    existing = _hermes_read(env_text)
+    additions: list[tuple[str, str]] = []
+    for option, names in OPTION_TARGETS.items():
+        value = options.get(option) or ""
+        if not isinstance(value, str):
+            raise SeedError(f"option {option} is not a string")
+        if value == "":
+            continue
+        _check_value(option, value)
+        for name in names:
+            if not existing.get(name):
+                additions.append((name, value))
+        if option == "ha_token" and not existing.get("HASS_URL"):
+            additions.append(("HASS_URL", HASS_URL_DEFAULT))
+    return additions
+
+
+def seed(options: dict, home: Path = HERMES_HOME) -> str:
+    """Seed .env once. Returns 'already-done', 'nothing-to-add' or 'seeded'."""
+    marker = home / MARKER_NAME
+    if marker.exists() or marker.is_symlink():
+        return "already-done"
+    env_path = home / ENV_NAME
+    text = _read_env_text(env_path)
+    additions = plan_additions(text, options)
+    for name, _value in additions:
+        if not _KEY_RE.match(name):
+            raise SeedError("internal: invalid key name")
+    if additions:
+        block = "".join(f"{name}={_sq(value)}\n" for name, value in additions)
+        if text and not text.endswith("\n"):
+            text += "\n"
+        _atomic_write(env_path, text + block)
+        status = "seeded"
+    else:
+        status = "nothing-to-add"
+    if not env_path.exists():
+        _atomic_write(env_path, "")
+    _atomic_write(marker, "1\n")
+    return status
+
+
+def main() -> int:
+    try:
+        options = json.loads(sys.stdin.read() or "{}")
+        if not isinstance(options, dict):
+            raise SeedError("options payload is not an object")
+        status = seed(options, HERMES_HOME)
+    except (SeedError, ValueError) as exc:
+        print(f"[hermes-app-seed] bootstrap failed (retryable): {exc}", file=sys.stderr)
+        return 1
+    print(f"[hermes-app-seed] {status}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+    if any(ch in value for ch in ("\n", "\r", "\x00")):
+        raise SeedError(f"{field}: value contains a line break or NUL; refusing")

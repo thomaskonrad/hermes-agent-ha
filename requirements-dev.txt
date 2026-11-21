@@ -1,0 +1,4 @@
+# Test-only dependencies for the host suite (tests/test_*.py).
+# Pinned so CI and local runs match. Dependabot keeps these current.
+pytest==9.2.0
+pyyaml==6.0.3

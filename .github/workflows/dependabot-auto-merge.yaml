@@ -1,0 +1,61 @@
+name: Dependabot auto-merge
+
+# Dependabot pull requests only. Tests run on the PR's own code first; the merge
+# happens only if every required job passes. Branch protection on main also
+# requires these checks before any merge.
+#
+# Major updates are never merged automatically: they need a human decision.
+on:
+  pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  test:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    uses: ./.github/workflows/tests.yaml
+    permissions:
+      contents: read
+
+  merge:
+    needs: [test]
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      # The Hermes base image is an upstream product release. A new Hermes
+      # version can change behaviour, config and data, whatever its semver
+      # level. It always needs a human decision, so it is never auto-merged.
+      - name: Hold upstream Hermes image updates for review
+        if: steps.metadata.outputs.package-ecosystem == 'docker'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "$PR_URL" --body "Upstream Hermes image update. Not merged automatically: review the Hermes release notes and merge by hand."
+
+      - name: Merge minor and patch updates (actions and test packages)
+        if: >-
+          steps.metadata.outputs.package-ecosystem != 'docker' &&
+          steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --squash --delete-branch "$PR_URL"
+
+      - name: Report major update for human review
+        if: >-
+          steps.metadata.outputs.package-ecosystem != 'docker' &&
+          steps.metadata.outputs.update-type == 'version-update:semver-major'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "$PR_URL" --body "Major version update: not merged automatically. Review and merge by hand."

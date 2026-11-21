@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an improvement to the Home Assistant app packaging.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository packages Hermes Agent for Home Assistant. Features of
+        Hermes itself (models, messaging, skills) belong to the
+        [Hermes Agent project](https://github.com/NousResearch/hermes-agent).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This is about the Home Assistant app (install, sidebar, options, backups), not about Hermes itself.
+          required: true

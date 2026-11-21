@@ -1,0 +1,40 @@
+# Hermes Agent for Home Assistant. Stage stays experimental until the app has
+# been verified on real Home Assistant installations.
+name: Hermes Agent
+version: "0.23.3"
+slug: hermes_agent
+description: Self-hosted AI agent with a dashboard, long-term memory, skills and a built-in browser
+url: https://github.com/thomaskonrad/hermes-agent-ha/tree/main/hermes_agent
+arch:
+  - aarch64
+  - amd64
+image: ghcr.io/thomaskonrad/hermes-agent-ha
+stage: experimental
+init: false                      # s6-overlay runs as PID 1 (required)
+timeout: 60                      # the gateway wants more than the 10 s default to stop
+ingress: true
+panel_title: Hermes Agent
+panel_icon: mdi:robot-happy-outline
+
+map:
+  - type: data
+    path: /opt/data              # upstream's own data path
+    read_only: false
+
+backup: cold
+
+environment:
+  HERMES_DASHBOARD: "1"
+  HERMES_DASHBOARD_HOST: "127.0.0.1"
+  HERMES_GATEWAY_BOOTSTRAP_STATE: "running"
+
+options:
+  openrouter_api_key: ""
+  ha_token: ""
+schema:
+  openrouter_api_key: "password?"
+  ha_token: "password?"
+
+# Hardening: every value is the safest one.
+privileged: []
+devices: []

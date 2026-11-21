@@ -1,0 +1,88 @@
+name: Tests
+
+# Runs the host, image and seeder test suites on GitHub-hosted runners.
+# Never publishes.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: Host unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Run host tests
+        run: python -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py -q -p no:cacheprovider
+
+  image:
+    name: Image ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            platform: linux/amd64
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Build image (build fails if nginx -t fails)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: hermes_agent
+          file: hermes_agent/Dockerfile
+          platforms: ${{ matrix.platform }}
+          load: true
+          push: false
+          tags: hermes-agent-ha:ci-${{ matrix.arch }}
+
+      - name: Verify architecture
+        run: |
+          docker image inspect "hermes-agent-ha:ci-${{ matrix.arch }}" --format '{{.Architecture}}'
+
+      - name: Seeder tests against the image's own python-dotenv
+        run: sh tests/run-in-image.sh "hermes-agent-ha:ci-${{ matrix.arch }}" "${{ matrix.platform }}"
+
+      - name: Container boot smoke test (fail-closed without a supervisor address)
+        run: |
+          set -e
+          cid=$(docker run -d --platform "${{ matrix.platform }}" "hermes-agent-ha:ci-${{ matrix.arch }}")
+          for i in $(seq 1 60); do
+            if docker logs "$cid" 2>&1 | grep -q 'FAIL-CLOSED: no valid Supervisor address'; then break; fi
+            sleep 2
+          done
+          docker logs "$cid" 2>&1 | grep -q 'FAIL-CLOSED: no valid Supervisor address'
+          docker logs "$cid" 2>&1 | grep -q 'hermes-app-seed'
+          docker rm -f "$cid" >/dev/null
