@@ -27,7 +27,6 @@ docker run --rm -v "$PWD:/github/workspace" -w /github/workspace \
 docker build --platform linux/arm64 -t hermes-agent-ha:dev-arm64 hermes_agent
 docker build --platform linux/amd64 -t hermes-agent-ha:dev-amd64 hermes_agent
 # 4. Seeder tests, run inside the image so they use its real python-dotenv
-sh tests/wheels-fetch.sh
 sh tests/run-in-image.sh hermes-agent-ha:dev-arm64 linux/arm64
 ```
 

@@ -53,12 +53,9 @@ metadata for the app store.
 
 ## Testing
 
-Run these before proposing a change:
-
-- Host tests: `.venv/bin/python -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py`
-- Official app linter at the version CI uses (see `CONTRIBUTING.md`).
-- Seeder tests inside the image (`tests/run-in-image.sh`).
-- Workflow syntax: `actionlint` on `.github/workflows/*.yaml`.
+Run the checks in [CONTRIBUTING.md](CONTRIBUTING.md#run-the-checks) before you
+propose a change. Also run `actionlint` on `.github/workflows/*.yaml` when you
+touch a workflow.
 
 Tests that the change makes obsolete must be updated or removed, not skipped.
 

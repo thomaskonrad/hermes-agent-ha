@@ -73,21 +73,7 @@ jobs:
           docker image inspect "hermes-agent-ha:ci-${{ matrix.arch }}" --format '{{.Architecture}}'
 
       - name: Seeder tests against the image's own python-dotenv
-        run: |
-          mkdir -p "$RUNNER_TEMP/testrun"
-          cp -R tests hermes_agent repository.yaml "$RUNNER_TEMP/testrun/"
-          cat > "$RUNNER_TEMP/testrun/run.sh" <<'EOF'
-          set -e
-          cd /w
-          pip_target=/tmp/pt
-          mkdir -p "$pip_target"
-          /opt/hermes/.venv/bin/python -c "import zipfile,glob,os; [zipfile.ZipFile(w).extractall('$pip_target') for w in glob.glob('/w/wheels/*.whl')]"
-          PYTHONPATH="$pip_target:/w" /opt/hermes/.venv/bin/python -m pytest tests/test_options_seed.py -q -p no:cacheprovider
-          EOF
-          python3 -m pip download -q --only-binary=:all: -d "$RUNNER_TEMP/testrun/wheels" "pytest==8.4.2"
-          docker run --rm --platform "${{ matrix.platform }}" \
-            -v "$RUNNER_TEMP/testrun:/w" --entrypoint sh \
-            "hermes-agent-ha:ci-${{ matrix.arch }}" /w/run.sh
+        run: sh tests/run-in-image.sh "hermes-agent-ha:ci-${{ matrix.arch }}" "${{ matrix.platform }}"
 
       - name: Container boot smoke test (fail-closed without a supervisor address)
         run: |
