@@ -56,5 +56,5 @@ but treat the app as experimental.
 
 ## License
 
-MIT for this app wrapper, see [LICENSE](LICENSE) and [NOTICE](NOTICE).
-Hermes Agent is MIT, copyright Nous Research.
+This app wrapper is licensed as described in [LICENSE](LICENSE). Hermes Agent
+is licensed by Nous Research; see [NOTICE](NOTICE) for attribution.

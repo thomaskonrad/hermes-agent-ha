@@ -111,4 +111,6 @@ itself belong to the Hermes project.
 
 ## License
 
-MIT for this app wrapper. Hermes Agent is MIT, copyright Nous Research.
+This app wrapper is licensed as described in the repository's
+[LICENSE](https://github.com/thomaskonrad/hermes-agent-ha/blob/main/LICENSE) file.
+Hermes Agent is licensed by Nous Research.
