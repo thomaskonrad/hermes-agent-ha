@@ -135,9 +135,13 @@ jobs:
           # credentials, so the App token goes into the URL. If the branch already
           # exists, git refuses the push and this job fails; no candidate is overwritten.
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${branch}"
-          gh pr create --repo "$GITHUB_REPOSITORY" --head "$branch" --base main \
+          pr_url=$(gh pr create --repo "$GITHUB_REPOSITORY" --head "$branch" --base main \
             --title "Hermes Agent ${NEW_VERSION} (upstream sync)" \
-            --body "Automated: upstream stable release ${NEW_VERSION}. Tests passed in this run. Publishing images is NOT part of this pull request."
+            --body "Automated: upstream stable release ${NEW_VERSION}. The candidate was tested in this run. Merging it publishes the new app image automatically once the required checks pass on the merge commit.")
+          # Merge it automatically once the required checks pass. GitHub waits for
+          # them, so a failing check blocks the merge. Merging the version bump on
+          # main is what triggers the Builder to publish.
+          gh pr merge "$pr_url" --auto --squash
 
   # Failure alert. Any failed job above opens one issue (or comments on the open
   # one), so a failed sync is never silent. Closing the issue re-arms the alert.
