@@ -56,3 +56,5 @@ use any credentials you provide. Read these limits before you install:
 - Dependencies (GitHub Actions, Docker base image, test packages) are kept
   current by Dependabot, and minor and patch updates are merged after the test
   suite passes. Major updates are reviewed by hand.
+- The upstream sync uses a GitHub App key, rotated every 12 months and
+  immediately if it may have leaked. See [docs/APP_KEY_ROTATION.md](docs/APP_KEY_ROTATION.md).
