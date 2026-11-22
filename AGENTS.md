@@ -32,9 +32,17 @@ metadata for the app store.
 
 ## Publishing rules (hard limits)
 
-- **Never publish** images, releases or packages without an explicit instruction
-  from the maintainer. Publishing is only possible through a manual
-  `workflow_dispatch` of the builder with `publish=true`.
+- **Publishing is automatic, and only on a version change.** The builder
+  publishes a new image when a push to `main` changes the app `version` in
+  `hermes_agent/config.yaml`, and only if the required checks pass on that commit.
+  Routine pushes (docs, CI, tooling) publish nothing.
+- **Upstream releases flow in on their own.** The daily sync opens a pull request
+  for a new stable Hermes release and merges it automatically once the required
+  checks pass. That merge is the version change that triggers publishing.
+- **A manual publish is an override, not the normal path.** Use `workflow_dispatch`
+  with `publish=true` only to re-publish or to recover a failed publish.
+- **Never** delete published images, releases or packages without an explicit
+  instruction from the maintainer.
 - **Never make the repository public** without an explicit instruction.
 - **Never** commit real secrets, tokens, `.env` files, or options files with
   real values. Test fixtures use obvious placeholders such as `FAKE-TEST-…`.
