@@ -24,6 +24,7 @@ import os
 import re
 import subprocess
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -47,7 +48,9 @@ class Refused(Exception):
 def _get_json(url: str) -> object:
     token = os.environ.get("GH_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "hermes-agent-ha"}
-    if token and "api.github.com" in url:
+    # Compare the parsed host exactly. A substring test would also match a URL
+    # such as https://example.invalid/?x=api.github.com and send the token there.
+    if token and urllib.parse.urlsplit(url).hostname == "api.github.com":
         headers["Authorization"] = f"Bearer {token}"
     with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30) as resp:
         return json.load(resp)

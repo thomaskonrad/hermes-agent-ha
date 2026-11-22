@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import pathlib
+import urllib.parse
 
 import pytest
 
@@ -40,9 +41,10 @@ def _fake_feeds(monkeypatch, tag="v0.23.3", prerelease=False, draft=False,
     index = {"digest": digest, "images": [{"architecture": a} for a in archs]}
 
     def route(url):
-        if "api.github.com" in url:
+        host = urllib.parse.urlsplit(url).hostname
+        if host == "api.github.com":
             return release
-        if "hub.docker.com" in url:
+        if host == "hub.docker.com":
             return index
         raise AssertionError(f"unexpected URL in test: {url}")
 
@@ -118,3 +120,37 @@ def test_refusal_changes_nothing(repo, monkeypatch):
         ub.bump()
     assert (repo / "Dockerfile").read_text(encoding="utf-8") == before_df
     assert (repo / "config.yaml").read_text(encoding="utf-8") == before_cfg
+
+
+@pytest.mark.parametrize(
+    "url, sends_token",
+    [
+        ("https://api.github.com/repos/NousResearch/hermes-agent/releases/latest", True),
+        # A substring match would have sent the token to these hosts.
+        ("https://example.invalid/?x=api.github.com", False),
+        ("https://api.github.com.example.invalid/releases", False),
+    ],
+)
+def test_token_is_sent_only_to_the_github_api(monkeypatch, url, sends_token):
+    monkeypatch.setenv("GH_TOKEN", "FAKE-TEST-GH-TOKEN")
+    seen = {}
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def fake_urlopen(request, timeout):
+        seen["auth"] = request.get_header("Authorization")
+        return _Resp()
+
+    monkeypatch.setattr(ub.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(ub.json, "load", lambda resp: {})
+    ub._get_json(url)
+    if sends_token:
+        assert seen["auth"] == "Bearer FAKE-TEST-GH-TOKEN"
+    else:
+        assert seen["auth"] is None
+
