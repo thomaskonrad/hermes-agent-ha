@@ -1,7 +1,9 @@
 # Hermes Agent for Home Assistant. Stage stays experimental until the app has
 # been verified on real Home Assistant installations.
+# App version X.Y.Z follows the app's own scheme (see AGENTS.md), not the Hermes
+# version. The Hermes version is pinned in the Dockerfile.
 name: Hermes Agent
-version: "0.23.4"
+version: "0.1.0"
 slug: hermes_agent
 description: Self-hosted AI agent with a dashboard, long-term memory, skills and a built-in browser
 url: https://github.com/thomaskonrad/hermes-agent-ha/tree/main/hermes_agent
