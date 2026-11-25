@@ -2,7 +2,7 @@
 #
 # The base is pinned by digest: upstream v0.23.3-desktop (multi-arch index,
 # Do not change the pin without re-running the test suites and the app linter.
-FROM nousresearch/hermes-agent:v0.23.3-desktop@sha256:5f587d1c036e551f57f1c706c460b41a4f48de0c4763e5865343eafd3950a2bc
+FROM nousresearch/hermes-agent:v0.23.4-desktop@sha256:d7f13dd62ea8fd9b231687f144717ba6f6e39f5dd5af5850e4c19f3bf618d746
 
 # The only software the app adds: the ingress web tier.
 # The RUN below performs a build-time nginx syntax check with a throwaway
