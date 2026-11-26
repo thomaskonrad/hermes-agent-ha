@@ -1,5 +1,5 @@
 <!-- https://contributors.home-assistant.io/apps/guides/presentation/#changelog -->
-## 0.2.0
+## 0.1.1
 
 - Runs Hermes Agent 0.23.4 with its dashboard in the Home Assistant sidebar.
 - New app icon and logo: the Hermes Agent artwork from the upstream project
