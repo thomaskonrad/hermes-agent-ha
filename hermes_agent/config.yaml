@@ -3,7 +3,7 @@
 # App version X.Y.Z follows the app's own scheme (see AGENTS.md), not the Hermes
 # version. The Hermes version is pinned in the Dockerfile.
 name: Hermes Agent
-version: "0.2.0"
+version: "0.1.1"
 slug: hermes_agent
 description: Self-hosted AI agent with a dashboard, long-term memory, skills and a built-in browser
 url: https://github.com/thomaskonrad/hermes-agent-ha/tree/main/hermes_agent
