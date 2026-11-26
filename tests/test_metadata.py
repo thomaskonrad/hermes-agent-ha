@@ -99,3 +99,14 @@ def test_repository_yaml_present():
     repo = yaml.safe_load((ROOT / "repository.yaml").read_text(encoding="utf-8"))
     assert repo["name"] == "Hermes Agent"
     assert repo["url"].startswith("https://github.com/")
+
+
+def test_app_version_uses_own_scheme():
+    # X.Y.Z of the app itself (AGENTS.md, Versioning), not the Hermes version.
+    assert re.fullmatch(r"\d+\.\d+\.\d+", _config()["version"])
+
+
+def test_changelog_has_an_entry_for_the_app_version():
+    version = _config()["version"]
+    changelog = (APP / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert re.search(rf"^## {re.escape(version)}$", changelog, re.MULTILINE), version

@@ -14,6 +14,10 @@ Rules (see AGENTS.md):
       endpoint excludes prereleases and drafts, and canary tags are prereleases.
     * The desktop image index must exist and provide both linux/amd64 and
       linux/arm64, or nothing is changed.
+    * The app version is its own scheme, X.Y.Z, and is not the Hermes version.
+      A Hermes patch release (0.23.4 -> 0.23.5) bumps Z. A Hermes minor release
+      (0.23 -> 0.24) bumps Y and resets Z to 0. A Hermes major change, or a
+      version that is not newer, is refused for a maintainer decision.
     * Nothing is published here. This only edits two files.
 """
 
@@ -92,6 +96,40 @@ def current_pin() -> tuple[str, str]:
     return matches[0]
 
 
+def current_app_version() -> str:
+    matches = APP_VERSION.findall(CONFIG.read_text(encoding="utf-8"))
+    if len(matches) != 1:
+        raise Refused("expected exactly one app version line in config.yaml")
+    return matches[0]
+
+
+def _triple(text: str) -> tuple[int, int, int]:
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", text)
+    if not match:
+        raise Refused(f"not a X.Y.Z version: {text!r}")
+    return (int(match[1]), int(match[2]), int(match[3]))
+
+
+def next_app_version(app: str, hermes_old: str, hermes_new: str) -> str:
+    """Return the app version that follows a Hermes bump. Refuses unsafe steps.
+
+    Hermes patch (0.23.4 -> 0.23.5): app Z + 1.
+    Hermes minor (0.23.x -> 0.24.y): app Y + 1, Z reset to 0.
+    Hermes major change, or a version that is not newer: refused.
+    The app's X is only changed by a maintainer, never here.
+    """
+    ax, ay, az = _triple(app)
+    old = _triple(hermes_old)
+    new = _triple(hermes_new)
+    if new <= old:
+        raise Refused(f"Hermes {hermes_new} is not newer than {hermes_old}")
+    if new[0] != old[0]:
+        raise Refused(f"Hermes major change {hermes_old} -> {hermes_new} needs a maintainer decision")
+    if new[1] != old[1]:
+        return f"{ax}.{ay + 1}.0"
+    return f"{ax}.{ay}.{az + 1}"
+
+
 def check() -> int:
     tag = latest_stable_upstream()
     version = tag.removeprefix("v")
@@ -99,6 +137,8 @@ def check() -> int:
     if version == pinned_version:
         print(f"up-to-date: {version}")
         return 0
+    # Refuse here, before a pull request is opened, if the app version has no safe step.
+    next_app_version(current_app_version(), pinned_version, version)
     print(f"update-available: {pinned_version} -> {version}")
     return 0
 
@@ -110,6 +150,8 @@ def bump() -> int:
     if version == pinned_version:
         print(f"up-to-date: {version}")
         return 0
+    app_old = current_app_version()
+    app_new = next_app_version(app_old, pinned_version, version)
     digest = desktop_index(tag)
 
     # Compute both new file contents first. Nothing is written unless both
@@ -121,13 +163,14 @@ def bump() -> int:
         raise Refused("could not rewrite the FROM line exactly once")
 
     config = CONFIG.read_text(encoding="utf-8")
-    if len(APP_VERSION.findall(config)) != 1:
-        raise Refused("expected exactly one app version line in config.yaml")
-    config = APP_VERSION.sub(f'version: "{version}"', config)
+    config = APP_VERSION.sub(f'version: "{app_new}"', config)
 
     DOCKERFILE.write_text(dockerfile, encoding="utf-8")
     CONFIG.write_text(config, encoding="utf-8")
-    print(f"bumped: {pinned_version} -> {version} (index sha256:{digest[:12]}...)")
+    print(
+        f"bumped: Hermes {pinned_version} -> {version}, "
+        f"app {app_old} -> {app_new} (index sha256:{digest[:12]}...)"
+    )
     return 0
 
 

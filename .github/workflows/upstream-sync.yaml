@@ -4,7 +4,7 @@ name: Upstream sync
 # 1. detect a new stable release (scripts/upstream_bump.py check)
 # 2. apply the bump in the runner and TEST it (the same suites as Tests)
 # 3. only if every test passes, open a pull request with the bump
-# Nothing is published. Publishing stays a manual builder run (AGENTS.md).
+# Nothing is published here. Merging the version bump triggers the Builder (AGENTS.md).
 on:
   schedule:
     - cron: "17 5 * * *"
@@ -130,14 +130,15 @@ jobs:
           git checkout -b "$branch"
           git add hermes_agent/Dockerfile hermes_agent/config.yaml
           git diff --cached --quiet && { echo "no change"; exit 0; }
-          git commit -m "Hermes Agent ${NEW_VERSION} (upstream sync)"
+          app_version=$(sed -n 's/^version: "\(.*\)"$/\1/p' hermes_agent/config.yaml)
+          git commit -m "Hermes Agent ${NEW_VERSION} (upstream sync, app ${app_version})"
           # A plain push, never a force push. The checkout does not persist
           # credentials, so the App token goes into the URL. If the branch already
           # exists, git refuses the push and this job fails; no candidate is overwritten.
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${branch}"
           pr_url=$(gh pr create --repo "$GITHUB_REPOSITORY" --head "$branch" --base main \
-            --title "Hermes Agent ${NEW_VERSION} (upstream sync)" \
-            --body "Automated: upstream stable release ${NEW_VERSION}. The candidate was tested in this run. Merging it publishes the new app image automatically once the required checks pass on the merge commit.")
+            --title "Hermes Agent ${NEW_VERSION} (app ${app_version})" \
+            --body "Automated: upstream stable release Hermes Agent ${NEW_VERSION}. The new app version is ${app_version} (see the versioning rules in AGENTS.md). The candidate was tested in this run. Merging it publishes the new app image automatically once the required checks pass on the merge commit.")
           # Merge it automatically once the required checks pass. GitHub waits for
           # them, so a failing check blocks the merge. Merging the version bump on
           # main is what triggers the Builder to publish.
