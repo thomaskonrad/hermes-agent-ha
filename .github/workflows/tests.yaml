@@ -79,10 +79,15 @@ jobs:
         run: |
           set -e
           cid=$(docker run -d --platform "${{ matrix.platform }}" "hermes-agent-ha:ci-${{ matrix.arch }}")
-          for i in $(seq 1 60); do
-            if docker logs "$cid" 2>&1 | grep -q 'FAIL-CLOSED: no valid Supervisor address'; then break; fi
+          # Wait until BOTH boot lines are logged, then assert. The seeder line
+          # is written after the fail-closed line, so breaking on the first
+          # marker alone can check for the second one too early.
+          for _ in $(seq 1 60); do
+            logs=$(docker logs "$cid" 2>&1 || true)
+            if grep -q 'FAIL-CLOSED: no valid Supervisor address' <<<"$logs" && grep -q 'hermes-app-seed' <<<"$logs"; then break; fi
             sleep 2
           done
-          docker logs "$cid" 2>&1 | grep -q 'FAIL-CLOSED: no valid Supervisor address'
-          docker logs "$cid" 2>&1 | grep -q 'hermes-app-seed'
+          logs=$(docker logs "$cid" 2>&1 || true)
+          grep -q 'FAIL-CLOSED: no valid Supervisor address' <<<"$logs"
+          grep -q 'hermes-app-seed' <<<"$logs"
           docker rm -f "$cid" >/dev/null
