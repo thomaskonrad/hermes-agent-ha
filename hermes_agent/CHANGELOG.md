@@ -4,7 +4,8 @@
 - Runs Hermes Agent 0.23.4 with its dashboard in the Home Assistant sidebar.
 - Fixed: the Chat and System tabs showed a black page. The lazy-loaded parts
   of the dashboard failed to load behind the Home Assistant sidebar. Other
-  tabs were not affected.
+  tabs were not affected. Verified with a simulated Home Assistant ingress,
+  not yet on a real Home Assistant installation.
 - The Hermes version is unchanged.
 
 ## 0.1.1
