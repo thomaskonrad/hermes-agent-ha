@@ -22,7 +22,7 @@ docker build -t local/app-linter:2.21 /tmp/al/src
 docker run --rm -v "$PWD:/github/workspace" -w /github/workspace \
   -e INPUT_PATH=./hermes_agent -e INPUT_COMMUNITY=false local/app-linter:2.21
 # 2. Host tests (metadata, allowlist, ingress config)
-.venv/bin/python -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py
+.venv/bin/python -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py tests/test_builder_filter.py
 # 3. Build the image for both architectures
 docker build --platform linux/arm64 -t hermes-agent-ha:dev-arm64 hermes_agent
 docker build --platform linux/amd64 -t hermes-agent-ha:dev-amd64 hermes_agent

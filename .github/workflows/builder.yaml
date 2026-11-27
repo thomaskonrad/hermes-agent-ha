@@ -67,12 +67,22 @@ jobs:
         env:
           APPS: ${{ steps.apps.outputs.addons }}
           CHANGED_FILES: ${{ steps.changed_files.outputs.all_changed_files }}
+          EVENT_NAME: ${{ github.event_name }}
+          MANUAL_PUBLISH: ${{ inputs.publish }}
         run: |
           changed_apps=()
 
+          # A manual publish builds every app. Without this, a dispatch on a
+          # commit that changed no app file skips the build and publishes nothing.
+          # Only the explicit publish=true override triggers it; a plain manual
+          # run keeps the file-based selection below.
+          # Split the app list into an array without unquoted word splitting.
+          read -r -a app_list <<< "${APPS}"
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" && "${MANUAL_PUBLISH}" == "true" ]]; then
+            changed_apps=("${app_list[@]}")
           # If the workflow file itself changed, rebuild all apps
-          if [[ "${CHANGED_FILES}" =~ \.github/workflows/(builder|build-app)\.yaml ]]; then
-            changed_apps=(${APPS})
+          elif [[ "${CHANGED_FILES}" =~ \.github/workflows/(builder|build-app)\.yaml ]]; then
+            changed_apps=("${app_list[@]}")
           else
             for app in ${APPS}; do
               for file in ${MONITORED_FILES}; do
@@ -107,7 +117,7 @@ jobs:
       - name: Wait for Tests and Lint on this commit
         run: |
           set -euo pipefail
-          for i in $(seq 1 90); do
+          for _ in $(seq 1 90); do
             out=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" \
               --jq '[.check_runs[] | select(.name=="Host unit tests" or .name=="Image amd64" or .name=="Image aarch64" or (.name|startswith("Lint app")))] | {pending: [.[] | select(.status!="completed")] | length, failed: [.[] | select(.status=="completed" and .conclusion!="success" and .conclusion!="skipped")] | length, total: length}')
             pending=$(echo "$out" | jq -r .pending); failed=$(echo "$out" | jq -r .failed); total=$(echo "$out" | jq -r .total)
