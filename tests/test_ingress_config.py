@@ -64,8 +64,16 @@ def test_sub_filter_pattern_keeps_quote_and_prefix_map_has_no_quote():
     ingress = INGRESS.read_text(encoding="utf-8")
     nginx = NGINX.read_text(encoding="utf-8")
     assert "sub_filter '\"assets/' '\"$ingress_asset_prefix';" in ingress
-    assert "''      'assets/';" in nginx
-    assert 'default "$http_x_ingress_path/assets/";' in nginx
+    assert "default    'assets/';" in nginx
+    assert "\"~^/(.+)$\" \"$1/assets/\";" in nginx
+
+
+def test_asset_prefix_has_no_leading_slash():
+    # Regression guard: the SPA loader prepends "/" itself. A leading slash in the
+    # prefix produces "//<host>/..." and breaks the lazy Chat/System chunks.
+    nginx = NGINX.read_text(encoding="utf-8")
+    assert 'default "$http_x_ingress_path/assets/";' not in nginx
+    assert "$http_x_ingress_path/assets/" not in nginx
 
 
 def test_proxy_limits_body_size_like_ha_ingress():
