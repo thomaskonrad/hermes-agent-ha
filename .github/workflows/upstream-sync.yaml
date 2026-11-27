@@ -92,7 +92,7 @@ jobs:
       - name: Host tests on the candidate
         run: |
           python3 -m pip install -r requirements-dev.txt
-          python3 -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py tests/test_upstream_bump.py -q -p no:cacheprovider
+          python3 -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py tests/test_upstream_bump.py tests/test_builder_filter.py -q -p no:cacheprovider
 
       - name: Official app linter on the candidate
         run: |

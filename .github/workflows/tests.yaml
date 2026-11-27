@@ -34,7 +34,7 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
 
       - name: Run host tests
-        run: python -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py -q -p no:cacheprovider
+        run: python -m pytest tests/test_metadata.py tests/test_access.py tests/test_ingress_config.py tests/test_builder_filter.py -q -p no:cacheprovider
 
   image:
     name: Image ${{ matrix.arch }}
